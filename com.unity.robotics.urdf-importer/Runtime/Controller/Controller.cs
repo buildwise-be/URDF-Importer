@@ -31,16 +31,24 @@ namespace Unity.Robotics.UrdfImporter.Control
         [Tooltip("Color to highlight the currently selected join")]
         public Color highLightColor = new Color(1.0f, 0, 0, 1.0f);
 
+        /*
         public InputActionAsset inputActionsAsset;
-
         private InputAction triggerAction;
         private InputAction bumperAction;
         private InputAction trackpadAction;
+        */
+
+        private MagicLeapOpenXRInput inputActions;
 
         private float verticalInput;
 
+        /*
         void Awake()
         {
+            if (inputActionsAsset == null)
+            {
+                inputActionsAsset = Resources.Load<InputActionAsset>("MagicLeapOpenXRInput");
+            }
             var controllerMap = inputActionsAsset.FindActionMap("Controller");
             triggerAction = controllerMap.FindAction("Trigger");
             bumperAction = controllerMap.FindAction("Bumper");
@@ -51,7 +59,18 @@ namespace Unity.Robotics.UrdfImporter.Control
             trackpadAction.performed += ctx => verticalInput = ctx.ReadValue<Vector2>().y;
             trackpadAction.canceled += _ => verticalInput = 0f;
         }
+        */
 
+        void Awake()
+        {
+            inputActions = new MagicLeapOpenXRInput();
+
+            inputActions.Controller.Trigger.performed += _ => OnSelectJoint(1);
+            inputActions.Controller.Bumper.performed += _ => OnSelectJoint(-1);
+
+            inputActions.Controller.Trackpad.performed += ctx => verticalInput = ctx.ReadValue<Vector2>().y;
+            inputActions.Controller.Trackpad.canceled += _ => verticalInput = 0f;
+        }
 
         void Start()
         {
@@ -72,19 +91,8 @@ namespace Unity.Robotics.UrdfImporter.Control
             StoreJointColors(selectedIndex);
         }
 
-        void OnEnable()
-        {
-            triggerAction?.Enable();
-            bumperAction?.Enable();
-            trackpadAction?.Enable();
-        }
-
-        void OnDisable()
-        {
-            triggerAction?.Disable();
-            bumperAction?.Disable();
-            trackpadAction?.Disable();
-        }
+        void OnEnable() => inputActions.Enable();
+        void OnDisable() => inputActions.Disable();
 
         private void OnSelectJoint(int direction)
         {
