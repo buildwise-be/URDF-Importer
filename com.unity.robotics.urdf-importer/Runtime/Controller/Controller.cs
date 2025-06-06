@@ -1,6 +1,7 @@
 ﻿using System;
 using Unity.Robotics;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Unity.Robotics.UrdfImporter.Control
 {
@@ -30,6 +31,28 @@ namespace Unity.Robotics.UrdfImporter.Control
         [Tooltip("Color to highlight the currently selected join")]
         public Color highLightColor = new Color(1.0f, 0, 0, 1.0f);
 
+        public InputActionAsset inputActionsAsset;
+
+        private InputAction triggerAction;
+        private InputAction bumperAction;
+        private InputAction trackpadAction;
+
+        private float verticalInput;
+
+        void Awake()
+        {
+            var controllerMap = inputActionsAsset.FindActionMap("Controller");
+            triggerAction = controllerMap.FindAction("Trigger");
+            bumperAction = controllerMap.FindAction("Bumper");
+            trackpadAction = controllerMap.FindAction("Trackpad");
+
+            triggerAction.performed += _ => OnSelectJoint(1);
+            bumperAction.performed += _ => OnSelectJoint(-1);
+            trackpadAction.performed += ctx => verticalInput = ctx.ReadValue<Vector2>().y;
+            trackpadAction.canceled += _ => verticalInput = 0f;
+        }
+
+
         void Start()
         {
             previousIndex = selectedIndex = 1;
@@ -49,6 +72,26 @@ namespace Unity.Robotics.UrdfImporter.Control
             StoreJointColors(selectedIndex);
         }
 
+        void OnEnable()
+        {
+            triggerAction?.Enable();
+            bumperAction?.Enable();
+            trackpadAction?.Enable();
+        }
+
+        void OnDisable()
+        {
+            triggerAction?.Disable();
+            bumperAction?.Disable();
+            trackpadAction?.Disable();
+        }
+
+        private void OnSelectJoint(int direction)
+        {
+            SetSelectedJointIndex(selectedIndex + direction);
+            Highlight(selectedIndex);
+        }
+
         void SetSelectedJointIndex(int index)
         {
             if (articulationChain.Length > 0) 
@@ -59,12 +102,15 @@ namespace Unity.Robotics.UrdfImporter.Control
 
         void Update()
         {
+            /*
             bool SelectionInput1 = Input.GetKeyDown("right");
             bool SelectionInput2 = Input.GetKeyDown("left");
+            */
 
             SetSelectedJointIndex(selectedIndex); // to make sure it is in the valid range
             UpdateDirection(selectedIndex);
 
+            /*
             if (SelectionInput2)
             {
                 SetSelectedJointIndex(selectedIndex - 1);
@@ -75,6 +121,7 @@ namespace Unity.Robotics.UrdfImporter.Control
                 SetSelectedJointIndex(selectedIndex + 1);
                 Highlight(selectedIndex);
             }
+            */
 
             UpdateDirection(selectedIndex);
         }
@@ -126,7 +173,9 @@ namespace Unity.Robotics.UrdfImporter.Control
                 return;
             }
 
-            float moveDirection = Input.GetAxis("Vertical");
+            //float moveDirection = Input.GetAxis("Vertical");
+            // verticalInput is updated via the trackpad callback
+
             JointControl current = articulationChain[jointIndex].GetComponent<JointControl>();
             if (previousIndex != jointIndex)
             {
@@ -140,6 +189,14 @@ namespace Unity.Robotics.UrdfImporter.Control
                 UpdateControlType(current);
             }
 
+            current.direction = verticalInput switch
+            {
+                > 0 => RotationDirection.Positive,
+                < 0 => RotationDirection.Negative,
+                _ => RotationDirection.None
+            };
+
+            /*
             if (moveDirection > 0)
             {
                 current.direction = RotationDirection.Positive;
@@ -152,6 +209,7 @@ namespace Unity.Robotics.UrdfImporter.Control
             {
                 current.direction = RotationDirection.None;
             }
+            */
         }
 
         /// <summary>
