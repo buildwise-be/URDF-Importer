@@ -1,7 +1,6 @@
 ﻿using System;
 using Unity.Robotics;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Unity.Robotics.UrdfImporter.Control
 {
@@ -11,7 +10,6 @@ namespace Unity.Robotics.UrdfImporter.Control
     public class Controller : MonoBehaviour
     {
         private ArticulationBody[] articulationChain;
-        // Stores original colors of the part being highlighted
         private Color[] prevColor;
         private int previousIndex;
 
@@ -24,59 +22,18 @@ namespace Unity.Robotics.UrdfImporter.Control
         public float stiffness;
         public float damping;
         public float forceLimit;
-        public float speed = 5f; // Units: degree/s
-        public float torque = 100f; // Units: Nm or N
-        public float acceleration = 5f;// Units: m/s^2 / degree/s^2
+        public float speed = 5f;
+        public float torque = 100f;
+        public float acceleration = 5f;
 
         [Tooltip("Color to highlight the currently selected join")]
         public Color highLightColor = new Color(1.0f, 0, 0, 1.0f);
 
-        /*
-        public InputActionAsset inputActionsAsset;
-        private InputAction triggerAction;
-        private InputAction bumperAction;
-        private InputAction trackpadAction;
-        */
-
-        private MagicLeapOpenXRInput inputActions;
-
-        private float verticalInput;
-
-        /*
-        void Awake()
-        {
-            if (inputActionsAsset == null)
-            {
-                inputActionsAsset = Resources.Load<InputActionAsset>("MagicLeapOpenXRInput");
-            }
-            var controllerMap = inputActionsAsset.FindActionMap("Controller");
-            triggerAction = controllerMap.FindAction("Trigger");
-            bumperAction = controllerMap.FindAction("Bumper");
-            trackpadAction = controllerMap.FindAction("Trackpad");
-
-            triggerAction.performed += _ => OnSelectJoint(1);
-            bumperAction.performed += _ => OnSelectJoint(-1);
-            trackpadAction.performed += ctx => verticalInput = ctx.ReadValue<Vector2>().y;
-            trackpadAction.canceled += _ => verticalInput = 0f;
-        }
-        */
-
-        void Awake()
-        {
-            inputActions = new MagicLeapOpenXRInput();
-
-            inputActions.Controller.Trigger.performed += _ => OnSelectJoint(1);
-            inputActions.Controller.Bumper.performed += _ => OnSelectJoint(-1);
-
-            inputActions.Controller.Trackpad.performed += ctx => verticalInput = ctx.ReadValue<Vector2>().y;
-            inputActions.Controller.Trackpad.canceled += _ => verticalInput = 0f;
-        }
-
         void Start()
         {
             previousIndex = selectedIndex = 1;
-            this.gameObject.AddComponent<FKRobot>();
-            articulationChain = this.GetComponentsInChildren<ArticulationBody>();
+            gameObject.AddComponent<FKRobot>();
+            articulationChain = GetComponentsInChildren<ArticulationBody>();
             int defDyanmicVal = 10;
             foreach (ArticulationBody joint in articulationChain)
             {
@@ -91,70 +48,28 @@ namespace Unity.Robotics.UrdfImporter.Control
             StoreJointColors(selectedIndex);
         }
 
-        void OnEnable() => inputActions.Enable();
-        void OnDisable() => inputActions.Disable();
-
-        private void OnSelectJoint(int direction)
+        void Update()
         {
-            SetSelectedJointIndex(selectedIndex + direction);
-            Highlight(selectedIndex);
+            SetSelectedJointIndex(selectedIndex);
+            UpdateDirection(selectedIndex);
         }
 
         void SetSelectedJointIndex(int index)
         {
-            if (articulationChain.Length > 0) 
-            {
+            if (articulationChain.Length > 0)
                 selectedIndex = (index + articulationChain.Length) % articulationChain.Length;
-            }
         }
 
-        void Update()
-        {
-            /*
-            bool SelectionInput1 = Input.GetKeyDown("right");
-            bool SelectionInput2 = Input.GetKeyDown("left");
-            */
-
-            SetSelectedJointIndex(selectedIndex); // to make sure it is in the valid range
-            UpdateDirection(selectedIndex);
-
-            /*
-            if (SelectionInput2)
-            {
-                SetSelectedJointIndex(selectedIndex - 1);
-                Highlight(selectedIndex);
-            }
-            else if (SelectionInput1)
-            {
-                SetSelectedJointIndex(selectedIndex + 1);
-                Highlight(selectedIndex);
-            }
-            */
-
-            UpdateDirection(selectedIndex);
-        }
-
-        /// <summary>
-        /// Highlights the color of the robot by changing the color of the part to a color set by the user in the inspector window
-        /// </summary>
-        /// <param name="selectedIndex">Index of the link selected in the Articulation Chain</param>
         private void Highlight(int selectedIndex)
         {
-            if (selectedIndex == previousIndex || selectedIndex < 0 || selectedIndex >= articulationChain.Length) 
-            {
+            if (selectedIndex == previousIndex || selectedIndex < 0 || selectedIndex >= articulationChain.Length)
                 return;
-            }
 
-            // reset colors for the previously selected joint
             ResetJointColors(previousIndex);
-
-            // store colors for the current selected joint
             StoreJointColors(selectedIndex);
-
             DisplaySelectedJoint(selectedIndex);
-            Renderer[] rendererList = articulationChain[selectedIndex].transform.GetChild(0).GetComponentsInChildren<Renderer>();
 
-            // set the color of the selected join meshes to the highlight color
+            Renderer[] rendererList = articulationChain[selectedIndex].transform.GetChild(0).GetComponentsInChildren<Renderer>();
             foreach (var mesh in rendererList)
             {
                 MaterialExtensions.SetMaterialColor(mesh.material, highLightColor);
@@ -163,26 +78,15 @@ namespace Unity.Robotics.UrdfImporter.Control
 
         void DisplaySelectedJoint(int selectedIndex)
         {
-            if (selectedIndex < 0 || selectedIndex >= articulationChain.Length) 
-            {
+            if (selectedIndex < 0 || selectedIndex >= articulationChain.Length)
                 return;
-            }
             selectedJoint = articulationChain[selectedIndex].name + " (" + selectedIndex + ")";
         }
 
-        /// <summary>
-        /// Sets the direction of movement of the joint on every update
-        /// </summary>
-        /// <param name="jointIndex">Index of the link selected in the Articulation Chain</param>
         private void UpdateDirection(int jointIndex)
         {
-            if (jointIndex < 0 || jointIndex >= articulationChain.Length) 
-            {
+            if (jointIndex < 0 || jointIndex >= articulationChain.Length)
                 return;
-            }
-
-            //float moveDirection = Input.GetAxis("Vertical");
-            // verticalInput is updated via the trackpad callback
 
             JointControl current = articulationChain[jointIndex].GetComponent<JointControl>();
             if (previousIndex != jointIndex)
@@ -192,38 +96,14 @@ namespace Unity.Robotics.UrdfImporter.Control
                 previousIndex = jointIndex;
             }
 
-            if (current.controltype != control) 
+            if (current.controltype != control)
             {
                 UpdateControlType(current);
             }
 
-            current.direction = verticalInput switch
-            {
-                > 0 => RotationDirection.Positive,
-                < 0 => RotationDirection.Negative,
-                _ => RotationDirection.None
-            };
-
-            /*
-            if (moveDirection > 0)
-            {
-                current.direction = RotationDirection.Positive;
-            }
-            else if (moveDirection < 0)
-            {
-                current.direction = RotationDirection.Negative;
-            }
-            else
-            {
-                current.direction = RotationDirection.None;
-            }
-            */
+            current.direction = RotationDirection.None;
         }
 
-        /// <summary>
-        /// Stores original color of the part being highlighted
-        /// </summary>
-        /// <param name="index">Index of the part in the Articulation chain</param>
         private void StoreJointColors(int index)
         {
             Renderer[] materialLists = articulationChain[index].transform.GetChild(0).GetComponentsInChildren<Renderer>();
@@ -234,10 +114,6 @@ namespace Unity.Robotics.UrdfImporter.Control
             }
         }
 
-        /// <summary>
-        /// Resets original color of the part being highlighted
-        /// </summary>
-        /// <param name="index">Index of the part in the Articulation chain</param>
         private void ResetJointColors(int index)
         {
             Renderer[] previousRendererList = articulationChain[index].transform.GetChild(0).GetComponentsInChildren<Renderer>();
@@ -263,8 +139,7 @@ namespace Unity.Robotics.UrdfImporter.Control
         {
             GUIStyle centeredStyle = GUI.skin.GetStyle("Label");
             centeredStyle.alignment = TextAnchor.UpperCenter;
-            GUI.Label(new Rect(Screen.width / 2 - 200, 10, 400, 20), "Press left/right arrow keys to select a robot joint.", centeredStyle);
-            GUI.Label(new Rect(Screen.width / 2 - 200, 30, 400, 20), "Press up/down arrow keys to move " + selectedJoint + ".", centeredStyle);
+            GUI.Label(new Rect(Screen.width / 2 - 200, 10, 400, 20), "Controller active. No input bindings in use.", centeredStyle);
         }
     }
 }
