@@ -21,7 +21,7 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
  */
-#if !ENABLE_IL2CPP
+#if !ENABLE_IL2CPP && !(UNITY_ANDROID && !UNITY_EDITOR)
 #define ASSIMP_SUPPORTED
 #endif
 
@@ -252,8 +252,8 @@ namespace UnityMeshImporter
             
             return NodeToGameObject(scene.RootNode);;
 #else
-            Debug.LogError("Runtime import of collada files is not currently supported in builds created with 'IL2CPP' scripting backend." + 
-                           "\nEither create a build with the scripting backend set as 'Mono' in 'Player Settings' or use STL meshes instead of Collada (dae) meshes.");
+            Debug.LogError("Runtime import of collada files is not currently supported on this platform." +
+                           "\nUse pre-imported mesh assets in Android builds, or use STL meshes instead of Collada (dae) meshes.");
             return null;
 #endif
         }

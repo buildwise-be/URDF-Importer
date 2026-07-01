@@ -25,12 +25,20 @@
 * This file is modified by Dongho Kang to distributed as a Unity package 2019.
 */ 
 
+#if !(UNITY_ANDROID && !UNITY_EDITOR)
 using Assimp.Unmanaged;
+#endif
 using System.IO;
 using UnityEngine;
 
 namespace Assimp
 {
+#if UNITY_ANDROID && !UNITY_EDITOR
+    public class AssimpUnity
+    {
+        public static bool IsAssimpAvailable => false;
+    }
+#else
     /// <summary>
     /// AssimpNet Unity integration. This handles one-time initialization (before scene load) of the AssimpLibrary instance, setting DLL probing paths to load the correct native
     /// dependencies, if the current platform is supported.
@@ -152,4 +160,5 @@ namespace Assimp
             libInstance.ThrowOnLoadFailure = true;
         }
     }
+#endif
 }
